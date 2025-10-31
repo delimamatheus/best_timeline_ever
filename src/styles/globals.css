@@ -1,0 +1,42 @@
+:root {
+  --gap: 12px;
+  --item-bg: #4caf50;
+  --item-color: #fff;
+}
+
+body {
+  font-family: Inter, Arial, sans-serif;
+  margin: 0;
+  background: #fff;
+  color: #111;
+}
+
+.timeline {
+  margin-top: 20px;
+}
+
+.timeline-lane {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.lane-label {
+  width: 90px;
+  font-weight: 600;
+}
+
+.lane-items {
+  display: flex;
+  gap: var(--gap);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.timeline-item {
+  background: var(--item-bg);
+  color: var(--item-color);
+  padding: 8px 12px;
+  border-radius: 8px;
+  min-width: 140px;
+}
