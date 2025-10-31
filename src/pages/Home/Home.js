@@ -1,6 +1,6 @@
 import React from "react";
 import timelineItems from "../../data/timelineItems";
-import assignLanes from "../../utils/assignLanes";
+import {assignLanes} from "../../utils/assignLanes";
 import Timeline from "../../components/organisms/Timeline/Timeline";
 
 export default function Home() {

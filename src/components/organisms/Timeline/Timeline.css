@@ -1,0 +1,9 @@
+.timeline {
+  display: flex;
+  gap: 16px;
+}
+.timeline-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
