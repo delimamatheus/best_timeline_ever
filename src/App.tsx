@@ -1,6 +1,7 @@
 import React from "react";
 import { CssBaseline, Container, Typography } from "@mui/material";
-import Timeline from "./components/organisms/Timeline/Timeline";
+import { Timeline } from "./components/organisms/Timeline/Timeline";
+import timelineItems from "./data/timelineItems";
 
 const App: React.FC = () => {
   return (
@@ -10,7 +11,7 @@ const App: React.FC = () => {
         <Typography variant="h4" gutterBottom textAlign="center">
           Airtable Timeline
         </Typography>
-        <Timeline />
+        <Timeline items={timelineItems} />
       </Container>
     </>
   );

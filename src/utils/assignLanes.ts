@@ -1,13 +1,14 @@
-export interface TimelineItem {
+export interface TimelineItemData {
   id: number;
   start: string;
   end: string;
   name: string;
   lane?: number;
+  category?: string;
 }
 
-export function assignLanes(items: TimelineItem[]): TimelineItem[] {
-  const lanes: TimelineItem[][] = [];
+export function assignLanes(items: TimelineItemData[]): TimelineItemData[] {
+  const lanes: TimelineItemData[][] = [];
 
   const sortedItems = [...items].sort(
     (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
