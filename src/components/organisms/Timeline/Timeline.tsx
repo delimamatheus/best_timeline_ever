@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -20,6 +20,8 @@ interface Props {
 
 const BASE_WIDTH_MOBILE = 800;
 
+type Category = "HR" | "Education" | "Translation" | "Design" | "Development" | "QA" | "Management" | string;
+
 export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   const theme = useTheme();
 
@@ -27,6 +29,8 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TimelineItemData | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<Category[]>([]);
+
 
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev + 0.25, 4.0));
@@ -90,6 +94,16 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
     );
   };
 
+  const handleLegendClick = (category: Category) => {
+    setSelectedCategories(prevCategories => {
+      if (prevCategories.includes(category)) {
+        return prevCategories.filter(cat => cat !== category);
+      } else {
+        return [...prevCategories, category];
+      }
+    });
+  };
+
 
   const msPerDay = 1000 * 60 * 60 * 24;
   const msPerMonth = msPerDay * 30;
@@ -117,19 +131,39 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   const totalDaysRange = (timelineEnd.getTime() - timelineStart.getTime()) / msPerDay;
 
 
-  const filteredItems = items.filter(item => {
-    const itemStart = new Date(item.start);
-    const itemEnd = new Date(item.end);
-    return itemStart.getTime() < timelineEnd.getTime() && itemEnd.getTime() > timelineStart.getTime();
-  });
+  const maxLanesForCurrentTimeRange = useMemo(() => {
+    const timeFilteredItems = items.filter(item => {
+      const itemStart = new Date(item.start);
+      const itemEnd = new Date(item.end);
+      return itemStart.getTime() < timelineEnd.getTime() && itemEnd.getTime() > timelineStart.getTime();
+    });
 
-  const lanes = assignLanes(filteredItems);
+    const assignedLanes = assignLanes(timeFilteredItems);
+    return assignedLanes.length;
+  }, [items, timelineStart, timelineEnd]);
+
+
+  const { lanes } = useMemo(() => {
+    const timeFilteredItems = items.filter(item => {
+      const itemStart = new Date(item.start);
+      const itemEnd = new Date(item.end);
+      return itemStart.getTime() < timelineEnd.getTime() && itemEnd.getTime() > timelineStart.getTime();
+    });
+
+    const categoryFilteredItems = selectedCategories.length > 0
+      ? timeFilteredItems.filter(item => selectedCategories.includes(item.category))
+      : timeFilteredItems;
+
+    const assignedLanes = assignLanes(categoryFilteredItems);
+
+    return { lanes: assignedLanes };
+  }, [items, timelineStart, timelineEnd, selectedCategories]);
 
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  const tagsHeight = lanes.length > 0
-    ? (lanes.length - 1) * VERTICAL_OVERLAP_OFFSET + ITEM_HEIGHT
+  const tagsHeight = maxLanesForCurrentTimeRange > 0
+    ? (maxLanesForCurrentTimeRange - 1) * VERTICAL_OVERLAP_OFFSET + ITEM_HEIGHT
     : 0;
 
   const calculatedMinHeight = tagsHeight + INITIAL_TOP_OFFSET;
@@ -151,32 +185,43 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
         backgroundColor: theme.palette.background.paper,
       }}
     >
-      <Paper
-        elevation={1}
-        sx={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          zIndex: 10,
-          p: 0.5,
-        }}
-      >
-        <ButtonGroup size="small" variant="text" aria-label="Controles de Zoom">
-          <Button onClick={handleZoomOut} disabled={zoomLevel <= 0.5}>
-            -
-          </Button>
-          <Button disabled sx={{ px: 1 }}>
-            {Math.round(zoomLevel * 100)}%
-          </Button>
-          <Button onClick={handleZoomIn} disabled={zoomLevel >= 4.0}>
-            +
-          </Button>
-        </ButtonGroup>
-      </Paper>
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexDirection: { xs: 'column', sm: 'row' },
+        mb: 2,
+        gap: { xs: 1, sm: 0 },
+      }}>
+        <Typography
+          variant={isMobile ? "h6" : "h5"}
+          textAlign={isMobile ? "center" : "left"}
+          width={{ xs: '100%', sm: 'auto' }}
+        >
+          The best timeline of all times
+        </Typography>
 
-      <Typography variant={isMobile ? "h6" : "h5"} mb={2} textAlign="center">
-        O melhor timeline de todos os tempos
-      </Typography>
+        <Paper
+          elevation={1}
+          sx={{
+            zIndex: 10,
+            p: 0.5,
+            position: 'static',
+          }}
+        >
+          <ButtonGroup size="small" variant="text" aria-label="Controles de Zoom">
+            <Button onClick={handleZoomOut} disabled={zoomLevel <= 0.5}>
+              -
+            </Button>
+            <Button disabled sx={{ px: 1 }}>
+              {Math.round(zoomLevel * 100)}%
+            </Button>
+            <Button onClick={handleZoomIn} disabled={zoomLevel >= 4.0}>
+              +
+            </Button>
+          </ButtonGroup>
+        </Paper>
+      </Box>
 
       <Box
         sx={{
@@ -263,7 +308,10 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
       </Box>
 
       <Box sx={{ mt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-        <TimelineLegend />
+        <TimelineLegend
+          onCategoryClick={handleLegendClick}
+          selectedCategories={selectedCategories}
+        />
       </Box>
 
       {selectedItem && (
