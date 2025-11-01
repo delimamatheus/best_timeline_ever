@@ -40,7 +40,7 @@ export const EditModal: React.FC<EditModalProps> = ({ open, onClose, item, onSav
         <Modal open={open} onClose={onClose} aria-labelledby="modal-title">
             <Box sx={modalStyle}>
                 <Typography id="modal-title" variant="h6" component="h2" mb={2}>
-                    Editar Nome do Item: {item.id}
+                    Edit task: {item.id}
                 </Typography>
                 <TextField
                     fullWidth
@@ -52,10 +52,10 @@ export const EditModal: React.FC<EditModalProps> = ({ open, onClose, item, onSav
 
                 <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
                     <Button onClick={onClose} variant="outlined">
-                        Cancelar
+                        Cancel
                     </Button>
                     <Button onClick={handleSubmit} variant="contained" color="primary">
-                        Salvar
+                        Save
                     </Button>
                 </Box>
             </Box>
