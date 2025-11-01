@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { CssBaseline, Container, Typography } from "@mui/material";
 import { Timeline } from "./components/organisms/Timeline/Timeline";
-import timelineItems from "./data/timelineItems";
+import initialTimelineItems from "./data/timelineItems";
 
 const App: React.FC = () => {
+
+  const [timelineItems, setTimelineItems] = useState(initialTimelineItems);
+
   return (
     <>
       <CssBaseline />
@@ -11,7 +14,11 @@ const App: React.FC = () => {
         <Typography variant="h4" gutterBottom textAlign="center">
           Airtable Timeline
         </Typography>
-        <Timeline items={timelineItems} />
+
+        <Timeline
+          items={timelineItems}
+          setItems={setTimelineItems}
+        />
       </Container>
     </>
   );

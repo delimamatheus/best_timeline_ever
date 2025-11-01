@@ -1,16 +1,40 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box, Typography, useTheme, useMediaQuery } from "@mui/material";
 import { assignLanes, TimelineItemData } from "../../../utils/assignLanes";
 import { TimelineItem } from "../../molecules/TimelineItem/TimelineItem";
 import { TimelineLegend } from "../../molecules/TimelineLegend/TimelineLegend";
+import { EditModal } from "../../molecules/EditModal/EditModal";
 
 interface Props {
   items: TimelineItemData[];
+  setItems: React.Dispatch<React.SetStateAction<TimelineItemData[]>>;
 }
 
-export const Timeline: React.FC<Props> = ({ items }) => {
+export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   const theme = useTheme();
   const lanes = assignLanes(items);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<TimelineItemData | null>(null);
+
+  const handleItemClick = (item: TimelineItemData) => {
+    setSelectedItem(item);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedItem(null);
+  };
+
+  const handleSave = (updatedItem: TimelineItemData) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === updatedItem.id ? updatedItem : item
+      )
+    );
+    handleModalClose();
+  };
 
   const msPerDay = 1000 * 60 * 60 * 24;
   const msPerMonth = msPerDay * 30;
@@ -19,14 +43,15 @@ export const Timeline: React.FC<Props> = ({ items }) => {
   const VERTICAL_OVERLAP_OFFSET = 14;
   const INITIAL_TOP_OFFSET = 40;
 
-  const minItemTime = Math.min(...items.map(i => new Date(i.start).getTime()));
-  const maxItemTime = Math.max(...items.map(i => new Date(i.end).getTime()));
+  const hasItems = items.length > 0;
+  const minItemTime = hasItems ? Math.min(...items.map(i => new Date(i.start).getTime())) : Date.now();
+  const maxItemTime = hasItems ? Math.max(...items.map(i => new Date(i.end).getTime())) : Date.now() + msPerMonth * 2;
 
   const rawTimelineStart = new Date(minItemTime);
   const rawTimelineEnd = new Date(maxItemTime);
 
-  const timelineStart = new Date(rawTimelineStart.getTime() - msPerMonth * paddingMonths);
-  const timelineEnd = new Date(rawTimelineEnd.getTime() + msPerMonth * paddingMonths);
+  const timelineStart = new Date(rawTimelineStart.getTime() - (hasItems ? msPerMonth * paddingMonths : 0));
+  const timelineEnd = new Date(rawTimelineEnd.getTime() + (hasItems ? msPerMonth * paddingMonths : 0));
 
   const totalDays = (timelineEnd.getTime() - timelineStart.getTime()) / msPerDay;
 
@@ -68,7 +93,8 @@ export const Timeline: React.FC<Props> = ({ items }) => {
             pt: 0,
             mt: 4,
             minWidth: isMobile ? '800px' : '100%',
-            width: 'fit-content'
+            width: 'fit-content',
+            pb: 1,
           }}
         >
           {Array.from({ length: 10 }).map((_, i) => {
@@ -124,6 +150,7 @@ export const Timeline: React.FC<Props> = ({ items }) => {
               endDate={timelineEnd}
               totalDays={totalDays}
               laneIndex={item.lane}
+              onClick={handleItemClick}
             />
           ))}
         </Box>
@@ -132,6 +159,15 @@ export const Timeline: React.FC<Props> = ({ items }) => {
       <Box sx={{ mt: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
         <TimelineLegend />
       </Box>
+
+      {selectedItem && (
+        <EditModal
+          open={isModalOpen}
+          onClose={handleModalClose}
+          item={selectedItem}
+          onSave={handleSave}
+        />
+      )}
     </Box>
   );
 };

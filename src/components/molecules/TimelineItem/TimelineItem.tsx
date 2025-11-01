@@ -8,6 +8,7 @@ interface Props {
   endDate: Date;
   totalDays: number;
   laneIndex?: number;
+  onClick: (item: TimelineItemData) => void;
 }
 
 const categoryColors: Record<string, string> = {
@@ -20,7 +21,7 @@ const categoryColors: Record<string, string> = {
   Management: "#6EE7B7",
 };
 
-export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalDays, laneIndex }) => {
+export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalDays, laneIndex, onClick }) => {
   const itemStart = new Date(item.start);
   const itemEnd = new Date(item.end);
   const startOffset = ((itemStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100;
@@ -35,6 +36,7 @@ export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalD
   return (
     <Tooltip title={`${item.name} (${item.start} → ${item.end})`} arrow>
       <Box
+        onClick={() => onClick(item)}
         sx={{
           position: "absolute",
           top: calculatedTop,
@@ -52,6 +54,7 @@ export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalD
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           cursor: "pointer",
+          zIndex: 1,
         }}
       >
         <Typography
