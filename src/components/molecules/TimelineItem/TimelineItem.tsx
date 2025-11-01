@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Box, Typography, Tooltip } from "@mui/material";
 import { TimelineItemData } from "../../../utils/assignLanes";
 
@@ -9,6 +9,9 @@ interface Props {
   totalDays: number;
   laneIndex?: number;
   onClick: (item: TimelineItemData) => void;
+  onDrop: (itemId: number, newLeft: number, timelineScrollWidth: number) => void;
+  timelineRef: React.RefObject<HTMLDivElement | null>;
+  setIsDragging: React.Dispatch<React.SetStateAction<boolean>>;
   zoomLevel: number;
 }
 
@@ -24,8 +27,16 @@ const categoryColors: Record<string, string> = {
 
 const ITEM_HEIGHT = 40;
 const BASE_FONT_SIZE = "0.75rem";
+const DRAG_THRESHOLD = 5; // Em pixels, o mínimo para ser considerado um arrasto
 
-export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalDays, laneIndex, onClick, zoomLevel }) => {
+export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalDays, laneIndex, onClick, onDrop, timelineRef, setIsDragging, zoomLevel }) => {
+  const [isCurrentlyDragging, setIsCurrentlyDragging] = useState(false);
+  const itemRef = useRef<HTMLDivElement>(null);
+
+  const dragStartMouseX = useRef(0);
+  const initialItemLeftPixels = useRef(0);
+  const dragged = useRef(false); // Novo ref para detectar se houve arrasto
+
   const itemStart = new Date(item.start);
   const itemEnd = new Date(item.end);
   const startOffset = ((itemStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100;
@@ -36,10 +47,103 @@ export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalD
 
   const calculatedTop = INITIAL_TOP_OFFSET + (laneIndex ?? 0) * VERTICAL_OVERLAP_OFFSET;
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (!itemRef.current || !timelineRef.current || !timelineRef.current.parentElement) return;
+
+    setIsCurrentlyDragging(true);
+    setIsDragging(true);
+    dragged.current = false; // Resetar o status de arrasto
+
+    dragStartMouseX.current = e.clientX;
+
+    const itemBounds = itemRef.current.getBoundingClientRect();
+    const timelineBounds = timelineRef.current.getBoundingClientRect();
+    const timelineScroll = timelineRef.current.parentElement.scrollLeft;
+
+    initialItemLeftPixels.current = itemBounds.left - timelineBounds.left + timelineScroll;
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isCurrentlyDragging || !timelineRef.current || !itemRef.current) return;
+
+    const timelineScrollWidth = timelineRef.current.scrollWidth;
+    const itemWidth = itemRef.current.offsetWidth;
+
+    const deltaX = e.clientX - dragStartMouseX.current;
+
+    // Se o movimento for maior que o limite, marca como arrasto
+    if (Math.abs(deltaX) > DRAG_THRESHOLD) {
+      dragged.current = true;
+    }
+
+    let finalLeftPixels = initialItemLeftPixels.current + deltaX;
+
+    // Restrição de limites:
+    finalLeftPixels = Math.max(0, finalLeftPixels);
+    finalLeftPixels = Math.min(timelineScrollWidth - itemWidth, finalLeftPixels);
+
+    const initialLeftInPixels = (startOffset / 100) * timelineScrollWidth;
+
+    const transformDelta = finalLeftPixels - initialLeftInPixels;
+
+    itemRef.current.style.transform = `translateX(${transformDelta}px)`;
+  };
+
+  const handleMouseUp = () => {
+    if (isCurrentlyDragging && itemRef.current && timelineRef.current) {
+
+      const timelineScrollWidth = timelineRef.current.scrollWidth;
+
+      if (dragged.current) { // Se foi um arrasto (movimento > DRAG_THRESHOLD)
+        const deltaX = (window.event as MouseEvent).clientX - dragStartMouseX.current;
+
+        let finalLeftPixels = initialItemLeftPixels.current + deltaX;
+        const itemWidth = itemRef.current.offsetWidth;
+
+        finalLeftPixels = Math.max(0, finalLeftPixels);
+        finalLeftPixels = Math.min(timelineScrollWidth - itemWidth, finalLeftPixels);
+
+        onDrop(item.id, finalLeftPixels, timelineScrollWidth);
+      }
+
+      itemRef.current.style.transform = '';
+    }
+    setIsCurrentlyDragging(false);
+    setIsDragging(false);
+  };
+
+  // Nova função de clique que verifica se foi um arrasto
+  const handleItemClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!dragged.current) {
+      onClick(item);
+    }
+    dragged.current = false; // Resetar para o próximo evento
+  };
+
+
+  useEffect(() => {
+    if (isCurrentlyDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isCurrentlyDragging]);
+
   return (
     <Tooltip title={`${item.name} (${item.start} → ${item.end})`} arrow>
       <Box
-        onClick={() => onClick(item)}
+        ref={itemRef}
+        onClick={handleItemClick} // Usando a nova função de clique
+        onMouseDown={handleMouseDown}
         sx={{
           position: "absolute",
           top: calculatedTop,
@@ -57,8 +161,9 @@ export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalD
           overflow: "visible",
           textOverflow: "clip",
           whiteSpace: "normal",
-          zIndex: 1,
-          cursor: "pointer",
+          zIndex: isCurrentlyDragging ? 100 : 1,
+          cursor: isCurrentlyDragging ? "grabbing" : "grab",
+          transition: isCurrentlyDragging ? 'none' : 'left 0.3s ease-in-out',
         }}
       >
         <Typography

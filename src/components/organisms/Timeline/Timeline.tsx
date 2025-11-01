@@ -26,6 +26,7 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TimelineItemData | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev + 0.25, 4.0));
@@ -36,6 +37,7 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   };
 
   const handleItemClick = (item: TimelineItemData) => {
+    if (isDragging) return;
     setSelectedItem(item);
     setIsModalOpen(true);
   };
@@ -53,6 +55,41 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
     );
     handleModalClose();
   };
+
+  const handleItemDrop = (itemId: number, newLeft: number, timelineScrollWidth: number) => {
+    setIsDragging(false);
+
+    const itemToUpdate = items.find(i => i.id === itemId);
+    if (!itemToUpdate) return;
+
+    const msPerDay = 1000 * 60 * 60 * 24;
+
+    const daysPerPixel = totalDaysForCalculation / timelineScrollWidth;
+
+    const newDaysOffset = newLeft * daysPerPixel;
+
+    const newStartDateMs = timelineStart.getTime() + newDaysOffset * msPerDay;
+    const newStart = new Date(newStartDateMs);
+
+    const durationMs = new Date(itemToUpdate.end).getTime() - new Date(itemToUpdate.start).getTime();
+
+    const newEnd = new Date(newStartDateMs + durationMs);
+
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+    const updatedItem = {
+      ...itemToUpdate,
+      start: formatDate(newStart),
+      end: formatDate(newEnd),
+    };
+
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === itemId ? updatedItem : item
+      )
+    );
+  };
+
 
   const msPerDay = 1000 * 60 * 60 * 24;
   const msPerMonth = msPerDay * 30;
@@ -98,6 +135,9 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
   const calculatedMinHeight = tagsHeight + INITIAL_TOP_OFFSET;
 
   const adjustedMinWidth = isMobile ? `${BASE_WIDTH_MOBILE}px` : `100%`;
+
+  const timelineRef = React.useRef<HTMLDivElement>(null);
+
 
   return (
     <Box
@@ -145,6 +185,7 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
         }}
       >
         <Box
+          ref={timelineRef}
           sx={{
             position: "relative",
             minHeight: calculatedMinHeight,
@@ -212,6 +253,9 @@ export const Timeline: React.FC<Props> = ({ items, setItems }) => {
               totalDays={totalDaysForCalculation}
               laneIndex={item.lane}
               onClick={handleItemClick}
+              onDrop={handleItemDrop}
+              timelineRef={timelineRef}
+              setIsDragging={setIsDragging}
               zoomLevel={zoomLevel}
             />
           ))}
