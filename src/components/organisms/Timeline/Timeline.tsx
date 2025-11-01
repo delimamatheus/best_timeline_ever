@@ -1,14 +1,7 @@
 import React from "react";
-import { Box, Typography, useTheme } from "@mui/material";
-import { assignLanes } from "../../../utils/assignLanes";
-
-export interface TimelineItemData {
-  id: number;
-  start: string;
-  end: string;
-  name: string;
-  team?: string;
-}
+import { Box, Typography, useTheme, useMediaQuery } from "@mui/material";
+import { assignLanes, TimelineItemData } from "../../../utils/assignLanes";
+import { TimelineItem } from "../../molecules/TimelineItem/TimelineItem";
 
 interface Props {
   items: TimelineItemData[];
@@ -18,60 +11,58 @@ export const Timeline: React.FC<Props> = ({ items }) => {
   const theme = useTheme();
   const lanes = assignLanes(items);
 
-  // Determinar o intervalo total da timeline
-  const timelineStart = new Date(
-    Math.min(...items.map((i) => new Date(i.start).getTime()))
-  );
-  const timelineEnd = new Date(
-    Math.max(...items.map((i) => new Date(i.end).getTime()))
-  );
-  const totalDays =
-    (timelineEnd.getTime() - timelineStart.getTime()) /
-    (1000 * 60 * 60 * 24);
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const msPerMonth = msPerDay * 30;
+  const paddingMonths = 1;
 
-  const getLeft = (date: string) =>
-    ((new Date(date).getTime() - timelineStart.getTime()) /
-      (timelineEnd.getTime() - timelineStart.getTime())) *
-    100;
+  const minItemTime = Math.min(...items.map(i => new Date(i.start).getTime()));
+  const maxItemTime = Math.max(...items.map(i => new Date(i.end).getTime()));
 
-  const colors = [
-    theme.palette.primary.main,
-    theme.palette.secondary.main,
-    theme.palette.error.main,
-    theme.palette.success.main,
-    theme.palette.warning.main,
-    theme.palette.info.main,
-  ];
+  const rawTimelineStart = new Date(minItemTime);
+  const rawTimelineEnd = new Date(maxItemTime);
+
+  const timelineStart = new Date(rawTimelineStart.getTime() - msPerMonth * paddingMonths);
+  const timelineEnd = new Date(rawTimelineEnd.getTime() + msPerMonth * paddingMonths);
+
+  const totalDays = (timelineEnd.getTime() - timelineStart.getTime()) / msPerDay;
+
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <Box
       sx={{
         position: "relative",
+        width: "100%",
         border: `1px solid ${theme.palette.divider}`,
         borderRadius: 2,
-        p: 3,
+        p: 2,
         backgroundColor: theme.palette.background.paper,
+        overflowX: "auto",
       }}
     >
-      <Typography variant="h6" mb={2} display="flex" alignItems="center">
-        📅 Project Timeline
+      <Typography variant={isMobile ? "h6" : "h5"} mb={2} textAlign="center">
+        The best timeline of all times
       </Typography>
 
-      {/* Timeline base line */}
       <Box
         sx={{
           position: "relative",
-          height: lanes.length * 50 + 60,
+          minHeight: lanes.length * 35 + 25,
+
           borderTop: `2px solid ${theme.palette.divider}`,
+
+          pt: 0,
           mt: 4,
+          minWidth: isMobile ? '800px' : '100%',
         }}
       >
-        {/* Date ticks */}
         {Array.from({ length: 10 }).map((_, i) => {
-          const date = new Date(
-            timelineStart.getTime() +
-              ((timelineEnd.getTime() - timelineStart.getTime()) / 9) * i
-          );
+          const date = new Date(timelineStart.getTime() + ((timelineEnd.getTime() - timelineStart.getTime()) / 9) * i);
+
+          const dateFormat = isMobile
+            ? { day: "numeric" }
+            : { month: "short", day: "numeric" };
+
           return (
             <Box
               key={i}
@@ -79,65 +70,47 @@ export const Timeline: React.FC<Props> = ({ items }) => {
                 position: "absolute",
                 top: 0,
                 left: `${(i / 9) * 100}%`,
-                width: 1,
-                textAlign: "center",
                 transform: "translateX(-50%)",
+                textAlign: "center",
               }}
             >
               <Box
                 sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
                   height: 10,
                   borderLeft: `2px solid ${theme.palette.divider}`,
+                  mx: "auto",
                 }}
               />
               <Typography
                 variant="caption"
-                sx={{ mt: 0.5, display: "block", color: "text.secondary" }}
+                sx={{
+                  position: 'relative',
+                  whiteSpace: 'nowrap',
+                  mt: 2,
+                  display: 'block',
+                  color: "text.secondary",
+                }}
               >
-                {date.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
+                {date.toLocaleDateString("en-US", dateFormat)}
               </Typography>
             </Box>
           );
         })}
 
-        {/* Items */}
-        {lanes.map((item, idx) => {
-          const left = getLeft(item.start);
-          const width =
-            ((new Date(item.end).getTime() - new Date(item.start).getTime()) /
-              (timelineEnd.getTime() - timelineStart.getTime())) *
-            100;
-          const color = colors[idx % colors.length];
-
-          return (
-            <Box
-              key={item.id}
-              sx={{
-                position: "absolute",
-                top: idx * 50 + 30,
-                left: `${left}%`,
-                width: `${width}%`,
-                height: 28,
-                backgroundColor: color,
-                borderRadius: 1,
-                color: "white",
-                px: 1,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                fontSize: "0.8rem",
-                fontWeight: 500,
-              }}
-            >
-              {item.name}
-            </Box>
-          );
-        })}
+        {lanes.map((item, idx) => (
+          <TimelineItem
+            key={item.id}
+            item={item}
+            startDate={timelineStart}
+            endDate={timelineEnd}
+            totalDays={totalDays}
+            laneIndex={item.lane}
+          />
+        ))}
       </Box>
     </Box>
   );
