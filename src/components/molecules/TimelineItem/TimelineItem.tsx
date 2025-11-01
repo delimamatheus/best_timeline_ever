@@ -26,19 +26,27 @@ export const TimelineItem: React.FC<Props> = ({ item, startDate, endDate, totalD
   const startOffset = ((itemStart.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) / totalDays * 100;
   const duration = ((itemEnd.getTime() - itemStart.getTime() + 86400000) / (1000 * 60 * 60 * 24)) / totalDays * 100;
 
+  const ITEM_HEIGHT = 28;
+  const VERTICAL_OVERLAP_OFFSET = 14;
+  const INITIAL_TOP_OFFSET = 40;
+
+  const calculatedTop = INITIAL_TOP_OFFSET + (laneIndex ?? 0) * VERTICAL_OVERLAP_OFFSET;
+
   return (
     <Tooltip title={`${item.name} (${item.start} → ${item.end})`} arrow>
       <Box
         sx={{
           position: "absolute",
-          top: (laneIndex ?? 0) * 35 + 40,
+          top: calculatedTop,
           left: `${startOffset}%`,
           width: `${duration}%`,
+          height: ITEM_HEIGHT,
           backgroundColor: categoryColors[item.category || "Management"],
           borderRadius: 1,
           px: 0.5,
           py: 0.3,
           color: "white",
+          textAlign: 'left',
           fontSize: { xs: "0.6rem", sm: "0.75rem" },
           overflow: "hidden",
           textOverflow: "ellipsis",
